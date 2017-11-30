@@ -67,6 +67,33 @@
 		
 	 ))
 
+(defun cluster-adjustment (oldclusters customer-demands)
+	(let ( (clusters (copy-list oldclusters) ) ) 
+			(dotimes (i (list-length clusters) clusters) 
+		(dotimes (k (list-length (cluster-points (nth i clusters)))) 
+			(dotimes (j (list-length clusters)) 
+					(if (and (not (equalp i j))
+					 (<  (eucledean-distance (nth k (cluster-points (nth i clusters)) ) (cluster-center (nth j clusters)) ) (eucledean-distance (nth k (cluster-points (nth i clusters)) ) (cluster-center (nth i clusters)) ) ) 
+					 (>= (cluster-capacity (nth j clusters)) (node-demand (nth k (cluster-points (nth i clusters)) ) customer-demands) ) 
+					 ) 
+						(progn 
+							(print "SHOULD!")
+								;; move k from i to j
+								(setf  (cluster-points (nth j clusters)) (append (cluster-points (nth j clusters)) (list (nth k (cluster-points (nth i clusters)) ) ) ) )
+								(setf (cluster-points (nth i clusters)) (remove-nth k (cluster-points (nth i clusters))) )
+								;; recalculate cluster center
+
+								(setf (cluster-center (nth j clusters)) (GC-cluster (nth j clusters)) )
+								(setf (cluster-center (nth i clusters)) (GC-cluster (nth j clusters)) )
+							)
+					)
+				)
+			)
+		) 
+		)
+
+	)
+
 (defun remove-nth (n list)
   (nconc (subseq list 0 n) (nthcdr (1+ n) list)))
 
