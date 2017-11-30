@@ -21,7 +21,7 @@
 (defun square (x) (* x x))
 
 (defun eucledean-distance (coord1 coord2) 
-	(sqrt (+ (square (+ (nth 1 coord1) (nth 1 coord2))) (square (+ (nth 2 coord1) (nth 2 coord2))) )))
+	(sqrt (+ (square (- (nth 1 coord1) (nth 1 coord2))) (square (- (nth 2 coord1) (nth 2 coord2))) )))
 
 (defstruct cluster
 	capacity
@@ -32,10 +32,13 @@
 	(let ((clusters (list) ) (unclustered-nodes (copy-list customer-locations)))
 		(progn 
 			(loop while (not (equalp 0 (list-length unclustered-nodes) )) do 
-				(let ((cluster (make-cluster :capacity capacity :center 0 points: (list ) )) 
+				(let ((cluster (make-cluster :capacity capacity :center 0 :points (list ) )) 
 						;; no problem here i think because its the furthest, but we should take depot from the unclustered nodes
-						(last-node (nth (furthest-node (car locations) unclustered-nodes) unclustered-nodes)  ) (last-node-index (furthest-node (car locations) unclustered-nodes))  ) 
-					;; on last-node-demand if we get -1 (Because no more nodes, because of nil)
+						(last-node (nth (furthest-node-index (car locations) unclustered-nodes) unclustered-nodes)  ) (last-node-index (furthest-node-index (car locations) unclustered-nodes))  ) 
+					
+
+					(progn 
+						;; on last-node-demand if we get -1 (Because no more nodes, because of nil)
 					(loop while (and (not (null last-node)) (<= (node-demand last-node customer-demands) (cluster-capacity cluster)) )  do 
 							(setf (cluster-points cluster) (append (cluster-points cluster) (list last-node) ))
 							;; reduce capacity of cluster by demand of last-node
@@ -46,10 +49,17 @@
 							(setf (cluster-center cluster) (GC-cluster cluster) )
 						    
 						    (setf last-node-index (closest-node-index (cluster-center cluster) unclustered-nodes))
-						    (setf last-node (nth last-node-index unclustered-nodes))
-						))
+						    (if (null last-node-index) (setf last-node nil)
+						    	(setf last-node (nth last-node-index unclustered-nodes)))
+						    
+						)
 
-					(setf clusters (append clusters (list cluster) ))
+
+						(setf clusters (append clusters (list cluster) )))
+
+					)
+
+					
 
 			)
 			(return-from create-clusters clusters)
@@ -72,6 +82,7 @@
 
 
  (setf locations '( (0 1 3) (1 4 3) (2 5 9) (3 7 8) (4 1 3) (5 15 90) (6 1 2)  ) )
+ (setf demands '( (0 5) (1 6) (2 7) (3 8) (4 4) (5 2) (6 1)  ) )
 
 ;; we return extra zero as the first element of list to be compatible with eucledean-dist func
 (defun GC-cluster (cluster)
@@ -92,10 +103,14 @@
  (defun closest-node-index (cluster-center customer-locations)
  	(let ((min (list nil nil)) )
 		(dotimes (i  (list-length customer-locations) )
-			(if (or (null (car min)) (< (eucledean-distance cluster-center (nth i customer-locations) ) (car min)))  (setf min (list (eucledean-distance cluster-center (nth i customer-locations)) i) ) )
+			(if (or (null (car min)) (< (eucledean-distance cluster-center (nth i customer-locations) ) (car min))) 
+			 (setf min (list (eucledean-distance cluster-center (nth i customer-locations)) i) ) )
+		  
 		  )
 		(return-from closest-node-index (cadr min) )
 		))
 
  (defun node-demand (customer-location customer-demands)
+ 	(cadr (nth (car customer-location) customer-demands))
  	)
+
