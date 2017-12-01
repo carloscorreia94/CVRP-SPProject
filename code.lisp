@@ -317,12 +317,19 @@
  	(dolist (point (cluster-points cluster) nil)
  	 (if (equalp (car point) 0) (return-from cluster-contains-depot T))	 ))
 
+(defun get-depot-id (cluster) 
+	(dotimes (i (list-length (cluster-points cluster) )  nil)
+ 	 (if (equalp (car (nth i (cluster-points cluster) ) ) 0) (return-from get-depot-id i))	 ))
+
 (defun add-depot-clusters (depot clusters) 
 	(let ((newclusters (copy-list-structure clusters) ))  
 		(dolist (cluster newclusters newclusters) 
 				(if (null (cluster-contains-depot cluster))  
 						(setf (cluster-points cluster) (append (list depot) (cluster-points cluster) ) )
-					)
+					
+				 (progn (setf (cluster-points cluster) (remove-nth (get-depot-id cluster) (cluster-points cluster)) ) 
+				 		(setf (cluster-points cluster) (append (list depot) (cluster-points cluster) ) )
+				 	)	)
 			)
 		)
 	)
@@ -340,33 +347,25 @@
 		)
 	)
 
+;(defun get-point-by-id (id points)
+;	(dolist (point points) 
+;		(if (equalp (car point) id) )
+;		))
 
 
 (defun tsp-cluster (cluster)
 	(let ( (graph (create-graph-cluster cluster) ) (initial-state (make-state :cityID 0 :visited (make-list (list-length (cluster-points cluster)) :initial-element 0) :distance 0)))
 			(setf (car (state-visited initial-state) ) 1)
-			(let ((problem (cria-problema initial-state (list 'operator) :objectivo? #'objetivo :heuristica 'heuristica :custo 'custo)))
-				(setf *current-graph* graph)
-				(return-from tsp-cluster (tsp-astar problem)) 
+			(setf *current-graph* graph)
+			(let ((problem (cria-problema initial-state (list 'operator) :objectivo? #'objetivo :heuristica 'heuristica :custo 'custo)  ) (finalIDs (list) ))
+				(dolist (number (tsp-astar problem) finalIDs) 
+					(setf finalIDs (append finalIDs (list (car (nth number (cluster-points cluster) ))  ) ) )
+					)
 				)
 
 		)
 	) 
 
-; returns smallest path taken from all clusters
-(defun clusters-min-tsp-depot (depot clusters)
-	(let ((clusters (add-depot-clusters depot clusters) ) (paths nil ) )
-			(dolist (cluster clusters paths)
-				(let ((result (tsp-cluster cluster)))
-						(if (or (null paths) (<= (list-length result) (list-length paths) )) 
-					 (setf paths result))
-					)
-
-					
-					)
-
-				)
-		)
 
 ; returns all paths taken inside each cluster ( each cluster already contains the depot)
 (defun clusters-tsp-depot (depot clusters)
@@ -379,17 +378,17 @@
 ; algorithm with cluster adjustment
 (defun clusters-tsp-depot-adjustment (depot clusters customer-demands)
 	(let ( (clusters (copy-list clusters) ) (depot-clusters (add-depot-clusters depot clusters) ) (paths (list) ) )
+			
+
+			(loop while (not (null (cluster-adjustment clusters customer-demands)  )  ) do 
+				(setf clusters (cluster-adjustment clusters customer-demands) )
+					(setf depot-clusters (add-depot-clusters depot clusters) )
+				)
+
 			(dolist (cluster depot-clusters) 
 				 (setf paths (append paths (list (tsp-cluster cluster) ) ))	
 				)
 
-			(loop while (not (null (setf clusters (cluster-adjustment clusters customer-demands) ) )  ) do 
-					(setf depot-clusters (add-depot-clusters depot clusters) )
-					(dolist (cluster depot-clusters) 
-				 (setf paths (append paths (list (tsp-cluster cluster) ) ))	
-				)
-
-				)
 			(return-from clusters-tsp-depot-adjustment paths)
 		))
 
@@ -410,13 +409,19 @@
 ;; customer demands is a list of demands identified by ids. (id, demand)
 
 (defun vrp (problem heuristic)
-	(clusters-tsp-depot-adjustment (nth 0 (vrp-customer.locations problem))
+	(if (string-equal heuristic "best.approach")
+		(clusters-tsp-depot-adjustment (nth 0 (vrp-customer.locations problem))
 	 (create-clusters (vrp-vehicle.capacity problem) (vrp-customer.locations problem) (vrp-customer.demand problem))  (vrp-customer.demand problem))
+
+		(clusters-tsp-depot (nth 0 (vrp-customer.locations problem))
+	 (create-clusters (vrp-vehicle.capacity problem) (vrp-customer.locations problem) (vrp-customer.demand problem)))
+
+		)
 	)
 
 
 (setf problem (make-vrp :NAME "CMT1"
-	:VEHICLE.CAPACITY 30
+	:VEHICLE.CAPACITY 10
 	:VEHICLES.NUMBER 5
 	:MAX.TOUR.LENGTH 150
 	:CUSTOMER.LOCATIONS '( (0 1 3) (1 4 3) (2 5 9) (3 7 8) (4 1 3) (5 15 90) (6 1 2)  )
